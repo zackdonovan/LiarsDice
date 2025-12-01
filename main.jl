@@ -222,7 +222,10 @@ function run_episode(game::Game; verbose=false)
 end
 
 # Example: 2-player, 2 dice each, ones wild, ego is player 1
-game = create_game(2, 2, true, 1)  # or use start_game after you fix it
-for ep in 1:5
-    println("Episode $ep reward = ", run_episode(game; verbose=true))
+# Only run if this file is executed directly (not when included)
+if abspath(PROGRAM_FILE) == @__FILE__
+    game = create_game(2, 2, true, 1)
+    for ep in 1:5
+        println("Episode $ep reward = ", run_episode(game; verbose=true))
+    end
 end

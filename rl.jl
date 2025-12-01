@@ -1,20 +1,21 @@
 include("main.jl")
 using Statistics
 
-# Algorithm 17.1: IncrementalEstimate
+# IncrementalEstimate
 mutable struct IncrementalEstimate
     μ # mean estimate
     α # learning rate function
     m # number of updates
 end
 
+# update
 function update!(model::IncrementalEstimate, x)
     model.m += 1
     model.μ += model.α(model.m) * (x - model.μ)
     return model
 end
 
-# Algorithm 17.2: QLearning
+# Qlearning struct
 mutable struct QLearning
     𝒮 # state space
     𝒜 # action space
@@ -23,6 +24,7 @@ mutable struct QLearning
     α # learning rate
 end
 
+# lookahead function
 lookahead(model::QLearning, s, a) = model.Q[s,a]
 
 function update!(model::QLearning, s, a, r, s′)
@@ -131,7 +133,7 @@ function train!(model::QLearning, encoder::StateEncoder, game::Game,
                     # Terminal state: Q(s,a) = r (no future rewards)
                     model.Q[s, a] += model.α * (reward - model.Q[s, a])
                 else
-                    # Non-terminal: standard Q-learning update
+                    # standard Q-learning update
                     s′ = encode_state(encoder, next_obs)
                     update!(model, s, a, reward, s′)
                     push!(transitions, (s, a, reward, s′))
@@ -154,7 +156,7 @@ function train!(model::QLearning, encoder::StateEncoder, game::Game,
             end
         end
         
-        # Decay epsilon
+        # decay epsilon
         epsilon = max(epsilon_end, epsilon * epsilon_decay)
         push!(episode_rewards, total_reward)
         
