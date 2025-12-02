@@ -180,7 +180,11 @@ function step(game::Game, state::FullState, action::Action)
         end
 
         if game_over == true
-            return nothing, nothing, reward, true
+            term_pub = PublicInfo(state.pub.last_bid, state.pub.last_bidder,
+                                  state.pub.turn, new_dice_left)
+            term_state = FullState(state.players, term_pub)
+            term_obs = observe(game, term_state)
+            return term_state, term_obs, reward, true
         end
 
         next_state, next_obs = new_round(game, new_dice_left, next_player(loser, N))
@@ -222,10 +226,7 @@ function run_episode(game::Game; verbose=false)
 end
 
 # Example: 2-player, 2 dice each, ones wild, ego is player 1
-# Only run if this file is executed directly (not when included)
-if abspath(PROGRAM_FILE) == @__FILE__
-    game = create_game(2, 2, true, 1)
-    for ep in 1:5
-        println("Episode $ep reward = ", run_episode(game; verbose=true))
-    end
+game = create_game(2, 2, true, 1)  # or use start_game after you fix it
+for ep in 1:5
+    println("Episode $ep reward = ", run_episode(game; verbose=true))
 end
