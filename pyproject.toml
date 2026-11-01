@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "liars-dice-bench"
+version = "0.1.0"
+description = "Reproducible hidden-information dice-game engine and baseline benchmark"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+liars-dice = "liars_dice.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["liars_dice*"]

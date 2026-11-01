@@ -1,0 +1,177 @@
+--- original/main.jl
++++ julia_preview/main.jl
+@@ -52,6 +52,7 @@
+ end
+ 
+ function legal_mask(game::Game, state::FullState)
++    sum(state.pub.dice_left .> 0) <= 1 && return fill(false, length(game.actions))
+     total_dice = sum(state.pub.dice_left)
+     last_bid = state.pub.last_bid
+     actions = game.actions
+@@ -85,24 +86,35 @@
+     end
+ end
+ 
++function next_active_player(i, counts)
++    for offset in 1:length(counts)
++        j = mod1(i + offset, length(counts))
++        counts[j] > 0 && return j
++    end
++    error("No active players")
++end
++
+ function next_player(i, N)
+     return (i % N) + 1
+ end
+ 
+ function create_game(num_players, dice_per_player, ones_wild, ego_id)
++    num_players >= 2 || error("At least two players required")
++    dice_per_player >= 1 || error("At least one die required")
++    1 <= ego_id <= num_players || error("Invalid ego player")
+     game = Game(num_players, dice_per_player, ones_wild, ego_id, all_actions(num_players * dice_per_player))
+     return game
+ end
+ 
+-function reset(game::Game)
+-    state, obs = new_round(game, fill(game.dice_per_player, game.num_players), 1)
++function reset(game::Game; rng=Random.default_rng())
++    state, obs = new_round(game, fill(game.dice_per_player, game.num_players), 1; rng=rng)
+ 
+     return state, obs
+ end
+ 
+-function new_round(game::Game, new_dice_left::Vector{Int}, turn::Int)
++function new_round(game::Game, new_dice_left::Vector{Int}, turn::Int; rng=Random.default_rng())
+     N = game.num_players
+-    players = roll_dice(new_dice_left)
++    players = roll_dice(new_dice_left; rng=rng)
+     pub = PublicInfo(nothing, nothing, turn, new_dice_left)
+     state = FullState(players, pub)
+     obs = observe(game, state)
+@@ -110,11 +122,11 @@
+     return state, obs
+ end
+ 
+-function roll_dice(dice_left::Vector{Int})
++function roll_dice(dice_left::Vector{Int}; rng=Random.default_rng())
+     num_players = length(dice_left)
+     players = Vector{PrivateInfo}(undef, num_players)
+     for (i, n) in enumerate(dice_left)
+-        rolls = rand(1:6, n)
++        rolls = rand(rng, 1:6, n)
+         players[i] = PrivateInfo(ntuple(i -> count(==(i), rolls), 6))
+     end
+     return players
+@@ -122,11 +134,14 @@
+ 
+ function observe(game::Game, state::FullState)
+     player = state.players[state.pub.turn]
+-    obs = Observation(player.dice, state.pub.last_bid, state.pub.dice_left, legal_mask(game, state))
++    obs = Observation(player.dice, state.pub.last_bid, copy(state.pub.dice_left), legal_mask(game, state))
+     return obs
+ end
+ 
+-function step(game::Game, state::FullState, action::Action)
++function step(game::Game, state::FullState, action::Action; rng=Random.default_rng())
++    sum(state.pub.dice_left .> 0) > 1 || error("Game is terminal")
++    idx = findfirst(a -> typeof(a) == typeof(action) && (a isa LiarAction || (a.qty == action.qty && a.face == action.face)), game.actions)
++    idx !== nothing && legal_mask(game, state)[idx] || error("Illegal action")
+     player = state.pub.turn
+     reward = 0.0
+     N = game.num_players
+@@ -135,7 +150,7 @@
+             error("Current bid not greater than last bid")
+         end
+             
+-        next_pub = PublicInfo(action, player, next_player(player, N), state.pub.dice_left)
++        next_pub = PublicInfo(action, player, next_active_player(player, state.pub.dice_left), copy(state.pub.dice_left))
+         next_state = FullState(state.players, next_pub)
+         next_obs = observe(game, next_state)
+         reward = BID_REWARD
+@@ -162,57 +177,43 @@
+         if count < bid.qty
+             winner = caller
+             loser = bidder
+-            reward = (winner == game.ego_id) ? WIN_REWARD : LOSS_REWARD
++            reward = winner == game.ego_id ? WIN_REWARD : (loser == game.ego_id ? LOSS_REWARD : 0.0)
+         else
+             winner = bidder
+             loser = caller
+-            reward = (winner == game.ego_id) ? WIN_REWARD : LOSS_REWARD
++            reward = winner == game.ego_id ? WIN_REWARD : (loser == game.ego_id ? LOSS_REWARD : 0.0)
+         end
+ 
+         new_dice_left = copy(state.pub.dice_left)
+         new_dice_left[loser] -= 1
+-        if new_dice_left[game.ego_id] == 0
+-            game_over = true
+-        elseif all(i == game.ego_id || new_dice_left[i] == 0 for i in 1:N)
+-            game_over = true
+-        else
+-            game_over = false
+-        end
+-
+-        if game_over == true
+-            term_pub = PublicInfo(state.pub.last_bid, state.pub.last_bidder,
+-                                  state.pub.turn, new_dice_left)
+-            term_state = FullState(state.players, term_pub)
+-            term_obs = observe(game, term_state)
+-            return term_state, term_obs, reward, true
+-        end
+-
+-        next_state, next_obs = new_round(game, new_dice_left, next_player(loser, N))
++        game_over = sum(new_dice_left .> 0) == 1
++        next_state, next_obs = new_round(game, new_dice_left,
++            next_active_player(loser, new_dice_left); rng=rng)
+     end
+     
+     return next_state, next_obs, reward, game_over
+ end
+ 
+-function random_legal_action(game::Game, obs::Observation)
++function random_legal_action(game::Game, obs::Observation; rng=Random.default_rng())
+     idxs = findall(obs.legal_actions)
+-    i = rand(idxs)
++    i = rand(rng, idxs)
+     return game.actions[i], i
+ end
+ 
+ # below this is just an example of how to run it
+ 
+-function run_episode(game::Game; verbose=false)
+-    state, obs = reset(game)
++function run_episode(game::Game; verbose=false, rng=Random.default_rng())
++    state, obs = reset(game; rng=rng)
+     total_reward = 0.0
+     step_num = 0
+ 
+     while true
+         step_num += 1
+-        action, a_idx = random_legal_action(game, obs)
++        action, a_idx = random_legal_action(game, obs; rng=rng)
+ 
+         verbose && println("Step $step_num | turn=$(state.pub.turn) | action=$action")
+ 
+-        next_state, next_obs, reward, done = step(game, state, action)
++        next_state, next_obs, reward, done = step(game, state, action; rng=rng)
+         total_reward += reward
+ 
+         if done
+@@ -225,9 +226,11 @@
+     end
+ end
+ 
+-# Example: 2-player, 2 dice each, ones wild, ego is player 1
+-game = create_game(2, 2, true, 1)  # or use start_game after you fix it
+-for ep in 1:5
+-    println("Episode $ep reward = ", run_episode(game; verbose=true))
+-end
+-
++# Direct execution only; importing this file does not run demonstrations.
++if abspath(PROGRAM_FILE) == @__FILE__
++    game = create_game(2, 2, true, 1)
++    rng = Random.MersenneTwister(42)
++    for ep in 1:5
++        println("Episode $ep reward = ", run_episode(game; verbose=true, rng=rng))
++    end
++end

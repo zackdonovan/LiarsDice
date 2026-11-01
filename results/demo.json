@@ -1,0 +1,138 @@
+{
+  "seed": 42,
+  "starter": 0,
+  "policies": [
+    "probability",
+    "random"
+  ],
+  "winner": 0,
+  "moves": 8,
+  "challenges": 2,
+  "round_rewards": [
+    2,
+    -2
+  ],
+  "final_dice": [
+    2,
+    0
+  ],
+  "events": [
+    {
+      "move": 1,
+      "round": 1,
+      "player": 0,
+      "action": {
+        "quantity": 1,
+        "face": 1
+      },
+      "challenge": null
+    },
+    {
+      "move": 2,
+      "round": 1,
+      "player": 1,
+      "action": {
+        "quantity": 2,
+        "face": 2
+      },
+      "challenge": null
+    },
+    {
+      "move": 3,
+      "round": 1,
+      "player": 0,
+      "action": {
+        "quantity": 2,
+        "face": 6
+      },
+      "challenge": null
+    },
+    {
+      "move": 4,
+      "round": 1,
+      "player": 1,
+      "action": {
+        "quantity": 3,
+        "face": 4
+      },
+      "challenge": null
+    },
+    {
+      "move": 5,
+      "round": 1,
+      "player": 0,
+      "action": {
+        "call": true
+      },
+      "challenge": {
+        "bidder": 1,
+        "caller": 0,
+        "bid": {
+          "quantity": 3,
+          "face": 4
+        },
+        "actual_count": 2,
+        "winner": 0,
+        "loser": 1,
+        "revealed_hands": [
+          [
+            6,
+            1
+          ],
+          [
+            1,
+            6
+          ]
+        ]
+      }
+    },
+    {
+      "move": 6,
+      "round": 2,
+      "player": 0,
+      "action": {
+        "quantity": 1,
+        "face": 2
+      },
+      "challenge": null
+    },
+    {
+      "move": 7,
+      "round": 2,
+      "player": 1,
+      "action": {
+        "quantity": 1,
+        "face": 4
+      },
+      "challenge": null
+    },
+    {
+      "move": 8,
+      "round": 2,
+      "player": 0,
+      "action": {
+        "call": true
+      },
+      "challenge": {
+        "bidder": 1,
+        "caller": 0,
+        "bid": {
+          "quantity": 1,
+          "face": 4
+        },
+        "actual_count": 0,
+        "winner": 0,
+        "loser": 1,
+        "revealed_hands": [
+          [
+            3,
+            2
+          ],
+          [
+            2
+          ]
+        ]
+      }
+    }
+  ]
+}
